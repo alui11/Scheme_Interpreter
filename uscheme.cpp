@@ -18,8 +18,10 @@ Node* parse_expression(istream&);
 void usage(int);
 void evaluate_r(const Node *n, stack<string> &s);
 void mathEval(string, int, stack<string> &);
+void listEval(string, int, stack<string> &);
 bool isApostrophe(char);
 bool isMathFunc(string);
+bool isListFunc(string);
 int gcd_func(int, int);
 bool string_is_number(string);
 
@@ -176,7 +178,7 @@ bool isNumber(char c){ //includes period in order to include floats
 	return ( (c>='0' && c<='9') || c=='.' );
 }
 
-bool isMathFunc(string func){ //Will eventually include other math functions
+bool isMathFunc(string func){
 	return ( func == "+" || func == "-" || func == "*" || func == "/"
 			|| func == "sqrt" || func == "remainder" || func=="floor" || func=="ceiling"
 			|| func=="truncate" || func=="round" || func=="expt" || func == "sin" || func == "cos"
@@ -184,6 +186,10 @@ bool isMathFunc(string func){ //Will eventually include other math functions
 			|| func == "gcd" || func == "lcm" || func == "quotient" || func == "log"
 			|| func == "positive?" || func == "negative?" || func=="zero?" || func == "odd?"
 			|| func == "even?" || func == "<" || func == ">");
+}
+
+bool isListFunc(string func){
+	return ( func == "cons" || func == "car" || func == "cdr" );
 }
 
 bool isApostrophe(char c) {
@@ -213,10 +219,6 @@ void evaluate_r(const Node *n, stack<string> &s){
 		s.push(n->value);
 	}else{
 		string func = n->value;
-		stringstream arg_error;
-		arg_error << func << ": Wrong number of arguments";
-		stringstream list_error;
-		list_error << func << ": Non-list argument passed to list function" << endl << "\t" << s.top();
 		//Check for different functions here!!
 		//Each function will find its arguments (# of args = nchildren)  on top of the stack
 		//and should push its return value to the stack
@@ -224,43 +226,55 @@ void evaluate_r(const Node *n, stack<string> &s){
 		//note: quote is not a function that belongs here because it deals with parsing so it's integrated into parse_expression
 		if(isMathFunc(func)){
 			mathEval(func, nchildren, s);
-		}else if(func=="car"){
-			if(nchildren!=1){
-				s.push(arg_error.str());
-			}else if(s.top()[0] != '(' || s.top()[1] == ')'){
-				s.push(list_error.str());
-			}else{
-				stringstream ss(s.top());
-				s.pop();
-				parse_token(ss); //remove paren
-				s.push(parse_token(ss)); //push first element
-			}
-		}else if(func=="cdr"){
-			if(nchildren!=1){
-				s.push(arg_error.str());
-			}else if(s.top()[0] != '(' || s.top()[1] == ')'){
-				s.push(list_error.str());
-			}else{
-				string list = s.top();
-				s.pop();
-				size_t newlistBegin = 0;
-				while(list[newlistBegin] != ' '){
-					newlistBegin++;
-					if(newlistBegin >= list.length()){
-						s.push("()");
-						return;
-					}
-				}
-				newlistBegin++;
-				string newlist = list.substr(newlistBegin, BUFSIZ); 
-				newlist.insert(0, "(");
-				s.push(newlist);
-			}
+		}else if(isListFunc(func)){
+			listEval(func, nchildren, s);
 		}else{
 			stringstream ss;
 			ss << func << ": Unrecognized function";
 			s.push(ss.str());
 		}
+	}
+}
+
+void listEval(string func, int nargs, stack<string> &s){
+	stringstream arg_error;
+	arg_error << func << ": Wrong number of arguments";
+	stringstream list_error;
+	list_error << func << ": Non-list argument passed to list function:" << endl << "\t" << s.top();
+	if(func=="car"){
+		if(nargs!=1){
+			s.push(arg_error.str());
+		}else if(s.top()[0] != '(' || s.top()[1] == ')'){
+			s.push(list_error.str());
+		}else{
+			stringstream ss(s.top());
+			s.pop();
+			parse_token(ss); //remove paren
+			s.push(parse_token(ss)); //push first element
+		}
+	}else if(func=="cdr"){
+		if(nargs!=1){
+			s.push(arg_error.str());
+		}else if(s.top()[0] != '(' || s.top()[1] == ')'){
+			s.push(list_error.str());
+		}else{
+			string list = s.top();
+			s.pop();
+			size_t newlistBegin = 0;
+			while(list[newlistBegin] != ' '){
+				newlistBegin++;
+				if(newlistBegin >= list.length()){
+					s.push("()");
+					return;
+				}
+			}
+			newlistBegin++;
+			string newlist = list.substr(newlistBegin, BUFSIZ); 
+			newlist.insert(0, "(");
+			s.push(newlist);
+		}
+	}else{
+		s.push("Error: unrecognized list function");
 	}
 }
 
