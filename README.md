@@ -1,3 +1,3 @@
 # Scheme_Interpreter
-The beginnings of a Scheme interpreter, written in C++.
+A Scheme interpreter, written in C++. Currently supports all math and some list functions.
 
